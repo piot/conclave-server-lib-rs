@@ -5,62 +5,19 @@
 //! The Conclave Logic for a Server
 //!
 
-use std::{
-    cell::Cell,
-    collections::{HashMap, VecDeque},
-};
-
 use conclave_room::Room;
+use conclave_types::SessionId;
+use unique_id_collection::UniqueIdCollection;
 
-pub struct UniqueIdCollection<T> {
-    items: HashMap<u8, T>,
-    deleted_ids: VecDeque<u8>,
-    id_counter: Cell<u8>,
-}
-
-impl<T> UniqueIdCollection<T> {
-    pub fn new() -> Self {
-        UniqueIdCollection {
-            items: HashMap::new(),
-            deleted_ids: VecDeque::new(),
-            id_counter: Cell::new(0),
-        }
-    }
-
-    pub fn add_item(&mut self, item: T) -> u8 {
-        if let Some(reused_id) = self.deleted_ids.pop_front() {
-            self.items.insert(reused_id, item);
-            reused_id
-        } else {
-            let new_id = self.id_counter.get();
-            self.id_counter.set(new_id + 1);
-            self.items.insert(new_id, item);
-            new_id
-        }
-    }
-
-    /// .
-    pub fn get_item(&self, id: u8) -> Option<&T> {
-        self.items.get(&id)
-    }
-
-    fn get_item_mut(&mut self, id: u8) -> Option<&mut T> {
-        self.items.get_mut(&id)
-    }
-
-    pub fn remove_item(&mut self, id: u8) -> Option<T> {
-        if let Some(removed_item) = self.items.remove(&id) {
-            self.deleted_ids.push_back(id);
-            Some(removed_item)
-        } else {
-            None
-        }
-    }
+pub struct UserSession {
+    pub guise_user_id: u64,
+    pub name: String,
 }
 
 #[derive(Default)]
 pub struct Server {
     rooms: UniqueIdCollection<Room>,
+    user_sessions: UniqueIdCollection<UserSession>,
 }
 
 impl Server {
@@ -69,20 +26,31 @@ impl Server {
         Default::default()
     }
 
-    pub fn create_room(&mut self) -> &mut Room {
+    pub fn create_room(&mut self, _: SessionId) -> &mut Room {
         let room = Room::new();
         let index = self.rooms.add_item(room);
+        eprintln!("creating room  {}", index);
         let change_room = self.rooms.get_item_mut(index).expect("index should exist");
         change_room.id = index;
         change_room
     }
-}
 
-impl<T> Default for UniqueIdCollection<T> {
-    fn default() -> Self {
-        Self::new()
+    pub fn get_user_session(&self, session_id: SessionId) -> Option<&UserSession> {
+        self.user_sessions.get_item(session_id as u8)
+    }
+
+    pub fn remove_room(&mut self, id: u8, _: SessionId) {
+        eprintln!("removing remove {}", id);
+        self.rooms.remove_item(id);
+    }
+
+    pub fn login_user(&mut self, guise_session_id: u64) -> SessionId {
+        let session = UserSession { guise_user_id: guise_session_id, name: "".to_string() };
+        let unique_session_id = self.user_sessions.add_item(session);
+        unique_session_id as SessionId
     }
 }
+
 #[cfg(test)]
 mod tests {
     use crate::Server;
@@ -90,9 +58,23 @@ mod tests {
     #[test]
     fn create_room() {
         let mut server = Server::new();
-        let room = server.create_room();
-        assert_eq!(room.id, 0);
-        let room2 = server.create_room();
-        assert_eq!(room2.id, 1);
+        let guise_session_id = 999;
+        let user_session_id = server.login_user(guise_session_id);
+        let room = server.create_room(user_session_id);
+        assert_eq!(room.id, 1);
+        let room2 = server.create_room(user_session_id);
+        assert_eq!(room2.id, 2);
+    }
+
+    #[test]
+    fn remove_room() {
+        let mut server = Server::new();
+        let guise_session_id = 999;
+        let user_session_id = server.login_user(guise_session_id);
+        let room_id = server.create_room(user_session_id).id;
+        assert_eq!(room_id, 1);
+        assert_eq!(server.rooms.len(), 1);
+        server.remove_room(room_id, user_session_id);
+        assert_eq!(server.rooms.len(), 0);
     }
 }

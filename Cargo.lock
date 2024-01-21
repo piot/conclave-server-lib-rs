@@ -13,4 +13,18 @@ name = "conclave-server-lib"
 version = "0.0.1"
 dependencies = [
  "conclave-room",
+ "conclave-types",
+ "unique-id-collection",
 ]
+
+[[package]]
+name = "conclave-types"
+version = "0.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "14ee3f7c47102332d65f647a8e059323117a02f7b053d25530d9eb64d931eca1"
+
+[[package]]
+name = "unique-id-collection"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2598a848e5afe06b1ddd4f3dba17ee77a2cfa3e2778c80c8a5c5cecf4f02df39"

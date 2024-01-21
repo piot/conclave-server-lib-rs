@@ -7,3 +7,5 @@ edition = "2021"
 
 [dependencies]
 conclave-room = "0.0.1"
+unique-id-collection = "0.1.0"
+conclave-types = "0.0.1"
